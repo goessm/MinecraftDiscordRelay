@@ -1,0 +1,5 @@
+name: DiscordRelay
+version: '${project.version}'
+main: me.me.discordrelay.DiscordRelay
+api-version: 1.19
+description: Simple discord relay plugin
