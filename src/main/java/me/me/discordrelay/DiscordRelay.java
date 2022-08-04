@@ -2,7 +2,9 @@ package me.me.discordrelay;
 
 import me.me.discordrelay.discord.Discord;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreeperPowerEvent;
@@ -13,15 +15,34 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class DiscordRelay extends JavaPlugin implements Listener {
 
+
+    private static DiscordRelay plugin;
+
+    // Values: Player name, MessageId
+    public static Map<String, String> lastJoinMessages = new HashMap<String, String>();
+
     boolean announceServerStatus = true;
+
+    public static DiscordRelay getPlugin() {
+        return plugin;
+    }
+
     @Override
     public void onEnable() {
+
+        plugin = this;
+
+        getCommand("shhhhh").setExecutor(new ShushCommand());
 
         getLogger().info("DiscordRelay enabled!");
 
@@ -50,7 +71,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     public void onChat(AsyncPlayerChatEvent e) {
         String message = e.getMessage().replaceAll("[\"§]", "");
         // Only relay messages starting with !
-        if ( message.isEmpty() || !message.startsWith("!")) {
+        if (message.isEmpty() || !message.startsWith("!")) {
             return;
         }
         // Remove leading !
@@ -69,11 +90,24 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         String joinMessage = e.getJoinMessage().replaceAll("§e", "");
-        sendDiscordEmbed(Color.GREEN, joinMessage);
+        String messageId = sendDiscordEmbed(Color.GREEN, joinMessage);
+        if (messageId != null) {
+            lastJoinMessages.put(e.getPlayer().getName(), messageId);
+        }
     }
 
     @EventHandler
     public void onLeave(PlayerQuitEvent e) {
+        // Do not relay message if player is shushed
+        Player player = e.getPlayer();
+        NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
+        PersistentDataContainer playerData = player.getPersistentDataContainer();
+        if (playerData.has(shushKey, PersistentDataType.STRING)) {
+            playerData.remove(shushKey);
+            return;
+        }
+
+        // Relay leave message
         String quitMessage = e.getQuitMessage().replaceAll("§e", "");
         sendDiscordEmbed(Color.RED, quitMessage);
     }
@@ -101,7 +135,14 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         }
     }
 
-    private void sendDiscordEmbed(Color color, String text) {
+    /**
+     * Send a discord embed message
+     *
+     * @param color Embed color
+     * @param text  Embed text
+     * @return The message id of the webhook message, or null on error
+     */
+    private String sendDiscordEmbed(Color color, String text) {
         Discord webhook = new Discord(getConfig().getString("webhookURL"));
         webhook.addEmbed(new Discord.EmbedObject()
                 .setColor(color)
@@ -112,5 +153,6 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         } catch (java.io.IOException event) {
             getLogger().severe(event.toString());
         }
+        return webhook.getMessageId();
     }
 }

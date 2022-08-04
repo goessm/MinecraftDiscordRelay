@@ -1,9 +1,11 @@
 package me.me.discordrelay.discord;
 
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+
 import javax.net.ssl.HttpsURLConnection;
 import java.awt.Color;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.net.URL;
 import java.util.ArrayList;
@@ -19,10 +21,16 @@ public class Discord {
     private String username;
     private String avatarUrl;
     private boolean tts;
-    private List<EmbedObject> embeds = new ArrayList<>();
 
+    private String messageId;
+
+    private List<EmbedObject> embeds = new ArrayList<>();
     public Discord(String url) {
         this.url = url;
+    }
+
+    public String getMessageId() {
+        return messageId;
     }
 
     public void setContent(String content) {
@@ -132,7 +140,7 @@ public class Discord {
         }
 
         try {
-            URL url = new URL(this.url);
+            URL url = new URL(this.url + "?wait=true");
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
             connection.addRequestProperty("Content-Type", "application/json");
             connection.addRequestProperty("User-Agent", "Java-DiscordWebhook");
@@ -143,6 +151,39 @@ public class Discord {
             stream.write(json.toString().getBytes());
             stream.flush();
             stream.close();
+
+            InputStream inputStream = connection.getInputStream();
+
+            // Get messageId from response
+            JsonReader reader = new JsonReader(new InputStreamReader(inputStream, "UTF-8"));
+            if (reader.peek() == JsonToken.BEGIN_OBJECT) {
+                reader.beginObject();
+                while (reader.hasNext()) {
+                    String name = reader.nextName();
+                    if (name.equals("id")) {
+                        messageId = reader.nextString();
+                        break;
+                    } else {
+                        reader.skipValue();
+                    }
+                }
+            }
+
+            inputStream.close();
+            connection.disconnect();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void deleteMessage(String urlString, String messageId) {
+        try {
+            URL url = new URL(urlString + "/messages/" + messageId);
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.addRequestProperty("Content-Type", "application/json");
+            connection.addRequestProperty("User-Agent", "Java-DiscordWebhook");
+            connection.setDoOutput(true);
+            connection.setRequestMethod("DELETE");
 
             connection.getInputStream().close();
             connection.disconnect();

@@ -3,3 +3,6 @@ version: '${project.version}'
 main: me.me.discordrelay.DiscordRelay
 api-version: 1.19
 description: Simple discord relay plugin
+commands:
+  shhhhh:
+    description: Do not relay join and leave messages for player
