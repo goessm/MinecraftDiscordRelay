@@ -20,6 +20,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.awt.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,7 +31,9 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static DiscordRelay plugin;
 
     // Values: Player name, MessageId
-    public static Map<String, String> lastJoinMessages = new HashMap<String, String>();
+    public static Map<String, String> lastJoinMessages = new HashMap<>();
+
+    private static Map<String, Instant> lastEventCall = new HashMap<>();
 
     boolean announceServerStatus = true;
 
@@ -84,6 +88,12 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
+        if (!(e.getEntity() instanceof Player)) {
+            return;
+        }
+        if (isShushed(e.getEntity())) {
+            return; // Do not relay if player is shushed
+        }
         sendDiscordEmbed(Color.YELLOW, e.getDeathMessage());
     }
 
@@ -98,15 +108,10 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onLeave(PlayerQuitEvent e) {
-        // Do not relay message if player is shushed
-        Player player = e.getPlayer();
-        NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
-        PersistentDataContainer playerData = player.getPersistentDataContainer();
-        if (playerData.has(shushKey, PersistentDataType.STRING)) {
-            playerData.remove(shushKey);
-            return;
+        if (isShushed(e.getPlayer())) {
+            removeShushed(e.getPlayer());
+            return; // Do not relay if player is shushed
         }
-
         // Relay leave message
         String quitMessage = e.getQuitMessage().replaceAll("§e", "");
         sendDiscordEmbed(Color.RED, quitMessage);
@@ -114,15 +119,29 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onKick(PlayerKickEvent e) {
+        if (isShushed(e.getPlayer())) {
+            return; // Do not relay if player is shushed
+        }
         String kickMessage = e.getLeaveMessage().replaceAll("§e", "");
         sendDiscordEmbed(Color.RED, kickMessage);
     }
 
     @EventHandler
     public void onCreeperPowered(CreeperPowerEvent e) {
-        if (e.getCause() == CreeperPowerEvent.PowerCause.LIGHTNING) {
-            sendDiscordEmbed(Color.YELLOW, "A creeper was struck by lightning :scream: :cloud_lightning: ");
+        long cooldownSecs = 10;
+        if (e.getCause() != CreeperPowerEvent.PowerCause.LIGHTNING) {
+            return;
         }
+        Instant lastCall = lastEventCall.get("creeper struck by lightning");
+        if (lastCall != null) {
+            Duration timeSinceLastCall = Duration.between(lastCall, Instant.now());
+            if (timeSinceLastCall.toSeconds() < cooldownSecs) {
+                // Event on cooldown
+                return;
+            }
+        }
+        lastEventCall.put("creeper struck by lightning", Instant.now());
+        sendDiscordEmbed(Color.YELLOW, "A creeper was struck by lightning :scream: :cloud_lightning: ");
     }
 
     @EventHandler
@@ -154,5 +173,17 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             getLogger().severe(event.toString());
         }
         return webhook.getMessageId();
+    }
+
+    private boolean isShushed(Player player) {
+        NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
+        PersistentDataContainer playerData = player.getPersistentDataContainer();
+        return playerData.has(shushKey, PersistentDataType.STRING);
+    }
+
+    private void removeShushed(Player player) {
+        NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
+        PersistentDataContainer playerData = player.getPersistentDataContainer();
+        playerData.remove(shushKey);
     }
 }
