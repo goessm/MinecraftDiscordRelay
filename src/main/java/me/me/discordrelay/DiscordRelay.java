@@ -3,11 +3,13 @@ package me.me.discordrelay;
 import me.me.discordrelay.discord.Discord;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreeperPowerEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -142,6 +144,15 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         }
         lastEventCall.put("creeper struck by lightning", Instant.now());
         sendDiscordEmbed(Color.YELLOW, "A creeper was struck by lightning :scream: :cloud_lightning: ");
+    }
+
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent e) {
+        if (e.getEntityType() == EntityType.ENDER_DRAGON) {
+            Player killer = e.getEntity().getKiller();
+            sendDiscordEmbed(Color.CYAN, "%s slayed the ender dragon!"
+                    .formatted(killer != null ? killer.getName() : "Someone"));
+        }
     }
 
     @EventHandler
