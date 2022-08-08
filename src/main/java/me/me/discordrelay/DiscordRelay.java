@@ -56,6 +56,8 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
         saveDefaultConfig();
 
+        startTasks();
+
         if (announceServerStatus) {
             sendDiscordEmbed(Color.GREEN, "Server started");
         }
@@ -105,6 +107,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         String messageId = sendDiscordEmbed(Color.GREEN, joinMessage);
         if (messageId != null) {
             lastJoinMessages.put(e.getPlayer().getName(), messageId);
+            CleanOldMessages.registerJoinMessage(messageId, Instant.now(), e.getPlayer().getName());
         }
     }
 
@@ -116,7 +119,10 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         }
         // Relay leave message
         String quitMessage = e.getQuitMessage().replaceAll("§e", "");
-        sendDiscordEmbed(Color.RED, quitMessage);
+        String messageId = sendDiscordEmbed(Color.RED, quitMessage);
+        if (messageId != null) {
+            CleanOldMessages.registerJoinMessage(messageId, Instant.now(), e.getPlayer().getName());
+        }
     }
 
     @EventHandler
@@ -163,6 +169,10 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         if (items.getType() == Material.DIAMOND_HOE) {
             sendDiscordEmbed(Color.CYAN, player.getName() + " crafted a diamond hoe :gem: Why?");
         }
+    }
+
+    private void startTasks() {
+//        new CleanOldMessages().startTask();
     }
 
     /**

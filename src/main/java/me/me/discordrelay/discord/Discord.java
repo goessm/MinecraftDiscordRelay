@@ -176,7 +176,8 @@ public class Discord {
         }
     }
 
-    public static void deleteMessage(String urlString, String messageId) {
+    public static boolean deleteMessage(String urlString, String messageId) {
+        System.out.println("deleting");
         try {
             URL url = new URL(urlString + "/messages/" + messageId);
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
@@ -189,7 +190,9 @@ public class Discord {
             connection.disconnect();
         } catch (Exception e) {
             System.out.println(e.getMessage());
+            return false;
         }
+        return true;
     }
 
     public static class EmbedObject {
