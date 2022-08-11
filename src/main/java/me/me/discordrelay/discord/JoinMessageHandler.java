@@ -3,6 +3,7 @@ package me.me.discordrelay.discord;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.awt.*;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -12,19 +13,20 @@ public class JoinMessageHandler {
     private static DiscordJoinMessage lastJoinMessage;
 
     public static void playerJoined(PlayerJoinEvent e) {
-        String emojiGreenCircle = ":green_circle:";
         String playerName = e.getPlayer().getName();
-        String joinMessage = emojiGreenCircle + " " + e.getJoinMessage().replaceAll("§e", "");
+        String discordTimestamp = "<t:" + Instant.now().getEpochSecond() + ":t>";
+        String joinMessage = discordTimestamp + " " + e.getJoinMessage().replaceAll("§e", "");
         JoinMessageEntry newJoinMsg = new JoinMessageEntry(true, Instant.now(), playerName, joinMessage);
 
         addJoinMessageEntry(newJoinMsg);
     }
 
     public static void playerLeft(PlayerQuitEvent e) {
-        String emojiRedCircle = ":red_circle:";
         String playerName = e.getPlayer().getName();
-        String quitMessage = emojiRedCircle + " " + e.getQuitMessage().replaceAll("§e", "");
+        String discordTimestamp = "<t:" + Instant.now().getEpochSecond() + ":t>";
+        String quitMessage = discordTimestamp + " " + e.getQuitMessage().replaceAll("§e", "");
         JoinMessageEntry newJoinMsg = new JoinMessageEntry(false, Instant.now(), playerName, quitMessage);
+
         addJoinMessageEntry(newJoinMsg);
     }
 
@@ -128,15 +130,29 @@ public class JoinMessageHandler {
         }
 
         public void buildMessageContent() {
-            StringBuilder sb = new StringBuilder();
-            for (JoinMessageEntry joinMessageEntry : joinMessageEntries) {
-                sb.append(joinMessageEntry.messageContent).append("\n");
-            }
-            DiscordMessage.EmbedObject embed = new DiscordMessage.EmbedObject()
-                    .setColor(3553599)
-                    .setDescription(sb.toString());
+            int embedsLeft = 10;
             discordMessage.clearEmbeds();
-            discordMessage.addEmbed(embed);
+
+            StringBuilder lastEmbedText = new StringBuilder();
+            for (JoinMessageEntry joinMessageEntry : joinMessageEntries) {
+                if (embedsLeft <= 1) {
+                    lastEmbedText.append(joinMessageEntry.isJoin ? ":green_circle: " : ":red_circle: ");
+                    lastEmbedText.append(joinMessageEntry.messageContent).append("\n\n");
+                } else {
+                    embedsLeft -= 1;
+                    discordMessage.addEmbed(new DiscordMessage.EmbedObject()
+                            .setColor(joinMessageEntry.isJoin ? Color.green : Color.red)
+                            .setDescription(joinMessageEntry.messageContent));
+                }
+            }
+
+            if (lastEmbedText.toString().length() > 0) {
+                // Last embed used
+                Color lastEmbedColor = joinMessageEntries.getLast().isJoin ? Color.green : Color.red;
+                discordMessage.addEmbed(new DiscordMessage.EmbedObject()
+                        .setColor(lastEmbedColor)
+                        .setDescription(lastEmbedText.toString()));
+            }
         }
 
         public boolean isOld() {

@@ -5,6 +5,7 @@ import me.me.discordrelay.discord.JoinMessageHandler;
 import me.me.discordrelay.discord.WebhookHandler;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -53,6 +54,8 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
 
         saveDefaultConfig();
+
+        announceServerStatus = getConfig().getBoolean("announceServerStatus");
 
         startTasks();
 
