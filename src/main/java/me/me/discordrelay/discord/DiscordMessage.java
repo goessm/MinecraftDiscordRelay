@@ -1,33 +1,29 @@
 package me.me.discordrelay.discord;
 
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
+import com.google.gson.annotations.Expose;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.awt.Color;
-import java.io.*;
 import java.lang.reflect.Array;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class Discord {
+public class DiscordMessage {
+    @Expose
+    public String content;
+    @Expose
+    public String username;
+    @Expose
+    public String avatarUrl;
+    @Expose
+    public boolean tts;
 
-    private final String url;
-    private String content;
-    private String username;
-    private String avatarUrl;
-    private boolean tts;
+    public String messageId;
 
-    private String messageId;
-
-    private List<EmbedObject> embeds = new ArrayList<>();
-    public Discord(String url) {
-        this.url = url;
-    }
+    @Expose
+    public List<EmbedObject> embeds = new ArrayList<>();
 
     public String getMessageId() {
         return messageId;
@@ -49,157 +45,23 @@ public class Discord {
         this.tts = tts;
     }
 
+    public void setMessageId(String messageId) {
+        this.messageId = messageId;
+    }
+
     public void addEmbed(EmbedObject embed) {
         this.embeds.add(embed);
     }
 
-    public void execute() throws IOException {
-        if (this.content == null && this.embeds.isEmpty()) {
-            throw new IllegalArgumentException("Set content or add at least one EmbedObject");
-        }
-
-        JSONObject json = new JSONObject();
-
-        json.put("content", this.content);
-        json.put("username", this.username);
-        json.put("avatar_url", this.avatarUrl);
-        json.put("tts", this.tts);
-
-        if (!this.embeds.isEmpty()) {
-            List<JSONObject> embedObjects = new ArrayList<>();
-
-            for (EmbedObject embed : this.embeds) {
-                JSONObject jsonEmbed = new JSONObject();
-
-                jsonEmbed.put("title", embed.getTitle());
-                jsonEmbed.put("description", embed.getDescription());
-                jsonEmbed.put("url", embed.getUrl());
-
-                if (embed.getColor() != null) {
-                    Color color = embed.getColor();
-                    int rgb = color.getRed();
-                    rgb = (rgb << 8) + color.getGreen();
-                    rgb = (rgb << 8) + color.getBlue();
-
-                    jsonEmbed.put("color", rgb);
-                }
-
-                EmbedObject.Footer footer = embed.getFooter();
-                EmbedObject.Image image = embed.getImage();
-                EmbedObject.Thumbnail thumbnail = embed.getThumbnail();
-                EmbedObject.Author author = embed.getAuthor();
-                List<EmbedObject.Field> fields = embed.getFields();
-
-                if (footer != null) {
-                    JSONObject jsonFooter = new JSONObject();
-
-                    jsonFooter.put("text", footer.getText());
-                    jsonFooter.put("icon_url", footer.getIconUrl());
-                    jsonEmbed.put("footer", jsonFooter);
-                }
-
-                if (image != null) {
-                    JSONObject jsonImage = new JSONObject();
-
-                    jsonImage.put("url", image.getUrl());
-                    jsonEmbed.put("image", jsonImage);
-                }
-
-                if (thumbnail != null) {
-                    JSONObject jsonThumbnail = new JSONObject();
-
-                    jsonThumbnail.put("url", thumbnail.getUrl());
-                    jsonEmbed.put("thumbnail", jsonThumbnail);
-                }
-
-                if (author != null) {
-                    JSONObject jsonAuthor = new JSONObject();
-
-                    jsonAuthor.put("name", author.getName());
-                    jsonAuthor.put("url", author.getUrl());
-                    jsonAuthor.put("icon_url", author.getIconUrl());
-                    jsonEmbed.put("author", jsonAuthor);
-                }
-
-                List<JSONObject> jsonFields = new ArrayList<>();
-                for (EmbedObject.Field field : fields) {
-                    JSONObject jsonField = new JSONObject();
-
-                    jsonField.put("name", field.getName());
-                    jsonField.put("value", field.getValue());
-                    jsonField.put("inline", field.isInline());
-
-                    jsonFields.add(jsonField);
-                }
-
-                jsonEmbed.put("fields", jsonFields.toArray());
-                embedObjects.add(jsonEmbed);
-            }
-
-            json.put("embeds", embedObjects.toArray());
-        }
-
-        try {
-            URL url = new URL(this.url + "?wait=true");
-            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
-            connection.addRequestProperty("Content-Type", "application/json");
-            connection.addRequestProperty("User-Agent", "Java-DiscordWebhook");
-            connection.setDoOutput(true);
-            connection.setRequestMethod("POST");
-
-            OutputStream stream = connection.getOutputStream();
-            stream.write(json.toString().getBytes());
-            stream.flush();
-            stream.close();
-
-            InputStream inputStream = connection.getInputStream();
-
-            // Get messageId from response
-            JsonReader reader = new JsonReader(new InputStreamReader(inputStream, "UTF-8"));
-            if (reader.peek() == JsonToken.BEGIN_OBJECT) {
-                reader.beginObject();
-                while (reader.hasNext()) {
-                    String name = reader.nextName();
-                    if (name.equals("id")) {
-                        messageId = reader.nextString();
-                        break;
-                    } else {
-                        reader.skipValue();
-                    }
-                }
-            }
-
-            inputStream.close();
-            connection.disconnect();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    public static boolean deleteMessage(String urlString, String messageId) {
-        System.out.println("deleting");
-        try {
-            URL url = new URL(urlString + "/messages/" + messageId);
-            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
-            connection.addRequestProperty("Content-Type", "application/json");
-            connection.addRequestProperty("User-Agent", "Java-DiscordWebhook");
-            connection.setDoOutput(true);
-            connection.setRequestMethod("DELETE");
-
-            connection.getInputStream().close();
-            connection.disconnect();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return false;
-        }
-        return true;
+    public void clearEmbeds() {
+        this.embeds = new ArrayList<>();
     }
 
     public static class EmbedObject {
         private String title;
         private String description;
         private String url;
-        private Color color;
+        private int color;
 
         private Footer footer;
         private Thumbnail thumbnail;
@@ -219,7 +81,7 @@ public class Discord {
             return url;
         }
 
-        public Color getColor() {
+        public int getColor() {
             return color;
         }
 
@@ -258,8 +120,16 @@ public class Discord {
             return this;
         }
 
-        public EmbedObject setColor(Color color) {
+        public EmbedObject setColor(int color) {
             this.color = color;
+            return this;
+        }
+
+        public EmbedObject setColor(Color color) {
+            int rgb = color.getRed();
+            rgb = (rgb << 8) + color.getGreen();
+            rgb = (rgb << 8) + color.getBlue();
+            this.color = rgb;
             return this;
         }
 

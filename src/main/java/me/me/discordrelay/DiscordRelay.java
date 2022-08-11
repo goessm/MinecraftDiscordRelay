@@ -1,6 +1,8 @@
 package me.me.discordrelay;
 
-import me.me.discordrelay.discord.Discord;
+import me.me.discordrelay.discord.DiscordMessage;
+import me.me.discordrelay.discord.JoinMessageHandler;
+import me.me.discordrelay.discord.WebhookHandler;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
@@ -31,11 +33,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
 
     private static DiscordRelay plugin;
-
-    // Values: Player name, MessageId
-    public static Map<String, String> lastJoinMessages = new HashMap<>();
-
-    private static Map<String, Instant> lastEventCall = new HashMap<>();
+    private static final Map<String, Instant> lastEventCall = new HashMap<>();
 
     boolean announceServerStatus = true;
 
@@ -79,7 +77,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     public void onChat(AsyncPlayerChatEvent e) {
         String message = e.getMessage().replaceAll("[\"§]", "");
         // Only relay messages starting with !
-        if (message.isEmpty() || !message.startsWith("!")) {
+        if (!message.startsWith("!")) {
             return;
         }
         // Remove leading !
@@ -103,12 +101,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        String joinMessage = e.getJoinMessage().replaceAll("§e", "");
-        String messageId = sendDiscordEmbed(Color.GREEN, joinMessage);
-        if (messageId != null) {
-            lastJoinMessages.put(e.getPlayer().getName(), messageId);
-            CleanOldMessages.registerJoinMessage(messageId, Instant.now(), e.getPlayer().getName());
-        }
+        JoinMessageHandler.playerJoined(e);
     }
 
     @EventHandler
@@ -118,11 +111,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             return; // Do not relay if player is shushed
         }
         // Relay leave message
-        String quitMessage = e.getQuitMessage().replaceAll("§e", "");
-        String messageId = sendDiscordEmbed(Color.RED, quitMessage);
-        if (messageId != null) {
-            CleanOldMessages.registerJoinMessage(messageId, Instant.now(), e.getPlayer().getName());
-        }
+        JoinMessageHandler.playerLeft(e);
     }
 
     @EventHandler
@@ -172,7 +161,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     }
 
     private void startTasks() {
-//        new CleanOldMessages().startTask();
+//        new JoinMessageHandler().startTask();
     }
 
     /**
@@ -183,17 +172,17 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
      * @return The message id of the webhook message, or null on error
      */
     private String sendDiscordEmbed(Color color, String text) {
-        Discord webhook = new Discord(getConfig().getString("webhookURL"));
-        webhook.addEmbed(new Discord.EmbedObject()
+        DiscordMessage message = new DiscordMessage();
+        message.addEmbed(new DiscordMessage.EmbedObject()
                 .setColor(color)
                 .setDescription(text)
         );
         try {
-            webhook.execute();
+            WebhookHandler.sendDiscordMessage(message);
         } catch (java.io.IOException event) {
             getLogger().severe(event.toString());
         }
-        return webhook.getMessageId();
+        return message.getMessageId();
     }
 
     private boolean isShushed(Player player) {

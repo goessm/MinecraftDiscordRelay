@@ -1,5 +1,6 @@
 package me.me.discordrelay;
 
+import me.me.discordrelay.discord.JoinMessageHandler;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -7,10 +8,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-
-import java.io.IOException;
-
-import static me.me.discordrelay.discord.Discord.deleteMessage;
 
 public class ShushCommand implements CommandExecutor {
     @Override
@@ -36,8 +33,6 @@ public class ShushCommand implements CommandExecutor {
     }
 
     private void removeLastJoinMessage(Player player) {
-        String messageId = DiscordRelay.lastJoinMessages.remove(player.getName());
-        if (messageId == null || messageId.equals("")) { return; }
-        deleteMessage(DiscordRelay.getPlugin().getConfig().getString("webhookURL"), messageId);
+        JoinMessageHandler.hideLastPlayerJoin(player.getName());
     }
 }
