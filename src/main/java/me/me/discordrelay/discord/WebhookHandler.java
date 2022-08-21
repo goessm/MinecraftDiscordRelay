@@ -18,10 +18,6 @@ import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class WebhookHandler {
 
@@ -36,7 +32,6 @@ public class WebhookHandler {
 
         Gson gson = new Gson();
         String json = gson.toJson(msg);
-        System.out.println(json);
 
         try {
             URL url = new URL(webhookUrl + "?wait=true");
@@ -56,12 +51,10 @@ public class WebhookHandler {
             List<String> headerRemaining = responseHeaders.get("x-ratelimit-remaining");
             if (headerRemaining != null) {
                 rateLimitRemaining = Integer.parseInt(headerRemaining.get(0));
-                System.out.println(rateLimitRemaining);
             }
             List<String> headerReset = responseHeaders.get("x-ratelimit-reset");
             if (headerReset != null) {
                 rateLimitReset = Instant.ofEpochSecond(Long.parseLong(headerReset.get(0)));
-                System.out.println(rateLimitReset);
             }
 
             // Get messageId from response
@@ -82,7 +75,7 @@ public class WebhookHandler {
             inputStream.close();
             connection.disconnect();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            DiscordRelay.getPlugin().getLogger().severe(e.getMessage());
         }
     }
 
@@ -91,13 +84,12 @@ public class WebhookHandler {
             throw new IllegalArgumentException("Set content or add at least one EmbedObject");
         }
         if (msg.getMessageId() == null) {
-            System.out.println("Patch failed: No message Id");
+            DiscordRelay.getPlugin().getLogger().info("Patch failed: No message Id");
             return;
         }
 
         Gson gson = new Gson();
         String json = gson.toJson(msg);
-        System.out.println(json);
 
         try {
 
@@ -114,15 +106,13 @@ public class WebhookHandler {
             List<String> headerRemaining = responseHeaders.get("x-ratelimit-remaining");
             if (headerRemaining != null) {
                 rateLimitRemaining = Integer.parseInt(headerRemaining.get(0));
-                System.out.println(rateLimitRemaining);
             }
             List<String> headerReset = responseHeaders.get("x-ratelimit-reset");
             if (headerReset != null) {
                 rateLimitReset = Instant.ofEpochSecond(Long.parseLong(headerReset.get(0)));
-                System.out.println(rateLimitReset);
             }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            DiscordRelay.getPlugin().getLogger().severe(e.getMessage());
         }
 
     }
@@ -133,7 +123,6 @@ public class WebhookHandler {
     }
 
     public static boolean deleteDiscordMessageById(String messageId) {
-        System.out.println("deleting");
         try {
             URL url = new URL(webhookUrl + "/messages/" + messageId);
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
@@ -145,7 +134,7 @@ public class WebhookHandler {
             connection.getInputStream().close();
             connection.disconnect();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            DiscordRelay.getPlugin().getLogger().severe(e.getMessage());
             return false;
         }
         return true;

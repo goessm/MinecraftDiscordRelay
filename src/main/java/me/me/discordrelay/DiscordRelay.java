@@ -1,11 +1,10 @@
 package me.me.discordrelay;
 
 import me.me.discordrelay.discord.DiscordMessage;
-import me.me.discordrelay.discord.JoinMessageHandler;
+import me.me.discordrelay.discord.BatchMessageHandler;
 import me.me.discordrelay.discord.WebhookHandler;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -36,7 +35,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static DiscordRelay plugin;
     private static final Map<String, Instant> lastEventCall = new HashMap<>();
 
-    boolean announceServerStatus = true;
+    private static boolean announceServerStatus = true;
 
     public static DiscordRelay getPlugin() {
         return plugin;
@@ -56,6 +55,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         saveDefaultConfig();
 
         announceServerStatus = getConfig().getBoolean("announceServerStatus");
+        BatchMessageHandler.DiscordBatchMessage.expirationTimeSeconds = getConfig().getInt("batchWindowSeconds");
 
         startTasks();
 
@@ -93,18 +93,15 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
-        if (!(e.getEntity() instanceof Player)) {
-            return;
-        }
         if (isShushed(e.getEntity())) {
             return; // Do not relay if player is shushed
         }
-        sendDiscordEmbed(Color.YELLOW, e.getDeathMessage());
+        BatchMessageHandler.playerDied(e);
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        JoinMessageHandler.playerJoined(e);
+        BatchMessageHandler.playerJoined(e);
     }
 
     @EventHandler
@@ -114,16 +111,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             return; // Do not relay if player is shushed
         }
         // Relay leave message
-        JoinMessageHandler.playerLeft(e);
-    }
-
-    @EventHandler
-    public void onKick(PlayerKickEvent e) {
-        if (isShushed(e.getPlayer())) {
-            return; // Do not relay if player is shushed
-        }
-        String kickMessage = e.getLeaveMessage().replaceAll("§e", "");
-        sendDiscordEmbed(Color.RED, kickMessage);
+        BatchMessageHandler.playerLeft(e);
     }
 
     @EventHandler

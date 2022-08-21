@@ -1,6 +1,6 @@
 package me.me.discordrelay;
 
-import me.me.discordrelay.discord.JoinMessageHandler;
+import me.me.discordrelay.discord.BatchMessageHandler;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -33,6 +33,6 @@ public class ShushCommand implements CommandExecutor {
     }
 
     private void removeLastJoinMessage(Player player) {
-        JoinMessageHandler.hideLastPlayerJoin(player.getName());
+        BatchMessageHandler.hideLastPlayerJoin(player.getName());
     }
 }
