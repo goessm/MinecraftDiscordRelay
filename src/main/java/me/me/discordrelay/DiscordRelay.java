@@ -36,6 +36,10 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static final Map<String, Instant> lastEventCall = new HashMap<>();
 
     private static boolean announceServerStatus = true;
+    private static boolean easterEggDiamondHoe = false;
+    private static boolean easterEggDragonKill = false;
+    private static boolean easterEggCreeperPowered = false;
+
 
     public static DiscordRelay getPlugin() {
         return plugin;
@@ -54,7 +58,11 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
         saveDefaultConfig();
 
+        easterEggDiamondHoe = getConfig().getBoolean("easterEggDiamondHoe");
+        easterEggDragonKill = getConfig().getBoolean("easterEggDragonKill");
+        easterEggCreeperPowered = getConfig().getBoolean("easterEggCreeperPowered");
         announceServerStatus = getConfig().getBoolean("announceServerStatus");
+
         BatchMessageHandler.DiscordBatchMessage.expirationTimeSeconds = getConfig().getInt("batchWindowSeconds");
 
         startTasks();
@@ -116,6 +124,9 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onCreeperPowered(CreeperPowerEvent e) {
+        if (!easterEggCreeperPowered) {
+            return;
+        }
         long cooldownSecs = 10;
         if (e.getCause() != CreeperPowerEvent.PowerCause.LIGHTNING) {
             return;
@@ -134,7 +145,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent e) {
-        if (e.getEntityType() == EntityType.ENDER_DRAGON) {
+        if (easterEggDragonKill && e.getEntityType() == EntityType.ENDER_DRAGON) {
             Player killer = e.getEntity().getKiller();
             sendDiscordEmbed(Color.CYAN, "%s slayed the ender dragon!"
                     .formatted(killer != null ? killer.getName() : "Someone"));
@@ -143,6 +154,9 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onCraft(CraftItemEvent e) {
+        if (!easterEggDiamondHoe) {
+            return;
+        }
         ItemStack items = e.getRecipe().getResult();
         HumanEntity player = e.getWhoClicked();
 

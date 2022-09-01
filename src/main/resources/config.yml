@@ -1,3 +1,5 @@
 webhookURL: "https://discord.com/api/webhooks/XXXXXX"
 announceServerStatus: true
 batchWindowSeconds: 28800
+easterEggDiamondHoe: false
+easterEggDragonKill: false
