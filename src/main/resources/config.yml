@@ -3,3 +3,4 @@ announceServerStatus: true
 batchWindowSeconds: 28800
 easterEggDiamondHoe: false
 easterEggDragonKill: false
+easterEggCreeperPowered: false

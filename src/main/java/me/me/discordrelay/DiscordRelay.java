@@ -176,7 +176,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
      * @param text  Embed text
      * @return The message id of the webhook message, or null on error
      */
-    private String sendDiscordEmbed(Color color, String text) {
+    public String sendDiscordEmbed(Color color, String text) {
         DiscordMessage message = new DiscordMessage();
         message.addEmbed(new DiscordMessage.EmbedObject()
                 .setColor(color)
