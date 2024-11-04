@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 public final class DiscordRelay extends JavaPlugin implements Listener {
 
@@ -36,10 +37,11 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static final Map<String, Instant> lastEventCall = new HashMap<>();
 
     private static boolean announceServerStatus = true;
+    private static boolean permaShush = false;
     private static boolean easterEggDiamondHoe = false;
     private static boolean easterEggDragonKill = false;
     private static boolean easterEggCreeperPowered = false;
-
+    private static List<String> ignoredPlayers;
 
     public static DiscordRelay getPlugin() {
         return plugin;
@@ -62,6 +64,8 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         easterEggDragonKill = getConfig().getBoolean("easterEggDragonKill");
         easterEggCreeperPowered = getConfig().getBoolean("easterEggCreeperPowered");
         announceServerStatus = getConfig().getBoolean("announceServerStatus");
+        permaShush = getConfig().getBoolean("permaShush");
+        ignoredPlayers = getConfig().getStringList("ignoredPlayers");
 
         BatchMessageHandler.DiscordBatchMessage.expirationTimeSeconds = getConfig().getInt("batchWindowSeconds");
 
@@ -86,11 +90,12 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent e) {
-        String message = e.getMessage().replaceAll("[\"§]", "");
-        // Only relay messages starting with !
-        if (!message.startsWith("!")) {
-            return;
+        String message = e.getMessage();
+        if (!message.startsWith("!") || message.length() <= 1) {
+            return; // Only relay messages starting with prefix
         }
+
+        message = message.replaceAll("[\"§]", "");
         // Remove leading !
         StringBuilder sb = new StringBuilder(message);
         sb.deleteCharAt(0);
@@ -109,13 +114,17 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
+        if (isShushed(e.getPlayer())) {
+            return; // Do not relay if player is shushed
+        }
+
         BatchMessageHandler.playerJoined(e);
     }
 
     @EventHandler
     public void onLeave(PlayerQuitEvent e) {
         if (isShushed(e.getPlayer())) {
-            removeShushed(e.getPlayer());
+            removeShushedOnLeave(e.getPlayer());
             return; // Do not relay if player is shushed
         }
         // Relay leave message
@@ -191,12 +200,20 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     }
 
     private boolean isShushed(Player player) {
+        if (ignoredPlayers != null && ignoredPlayers.contains(player.getName())) {
+            return true; // On ignore list
+        }
+
         NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
         PersistentDataContainer playerData = player.getPersistentDataContainer();
         return playerData.has(shushKey, PersistentDataType.STRING);
     }
 
-    private void removeShushed(Player player) {
+    private void removeShushedOnLeave(Player player) {
+        if (permaShush) {
+            return; // Keep player shushed
+        }
+
         NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
         PersistentDataContainer playerData = player.getPersistentDataContainer();
         playerData.remove(shushKey);

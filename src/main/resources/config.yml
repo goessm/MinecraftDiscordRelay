@@ -1,6 +1,10 @@
+# Replace with own URL
 webhookURL: "https://discord.com/api/webhooks/XXXXXX"
 announceServerStatus: true
 batchWindowSeconds: 28800
+permaShush: false
 easterEggDiamondHoe: false
 easterEggDragonKill: false
 easterEggCreeperPowered: false
+ignoredPlayers:
+  - NAMESHERETOIGNORE
