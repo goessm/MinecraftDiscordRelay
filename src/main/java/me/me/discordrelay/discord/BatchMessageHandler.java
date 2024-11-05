@@ -1,7 +1,11 @@
 package me.me.discordrelay.discord;
 
 import me.me.discordrelay.DiscordRelay;
+
+import org.bukkit.advancement.Advancement;
+import org.bukkit.advancement.AdvancementDisplay;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -40,6 +44,24 @@ public class BatchMessageHandler {
         String deathMessage = e.getDeathMessage();
         BatchMessageEntry deathMsg = new BatchMessageEntry(Instant.now(), e.getEntity().getName(), ":skull_crossbones:", deathMessage, Color.yellow);
         addBatchMessageEntry(deathMsg);
+    }
+
+    public static void playerAdvancement(PlayerAdvancementDoneEvent e) {
+        String playerName = e.getPlayer().getName();
+        Advancement advancement = e.getAdvancement();
+        if (advancement == null) {
+            return;
+        }
+        AdvancementDisplay display = advancement.getDisplay();
+        if (display == null) {
+            return;
+        }
+        String advancementName = display.getTitle();
+        String msgText = String.format("%s has achieved: %s", playerName, advancementName);
+        Color goldColor = new Color(12745742);
+        BatchMessageEntry msg = new BatchMessageEntry(Instant.now(), playerName, ":trophy:", msgText, goldColor);
+        msg.iconOverflowOnly = false; // Always show icon
+        addBatchMessageEntry(msg);
     }
 
     public static void hideLastPlayerJoin(String playerName) {
@@ -143,6 +165,7 @@ public class BatchMessageHandler {
         public Instant timestamp;
         public String playerName;
         public String icon;
+        public boolean iconOverflowOnly;
         public String messageContent;
         public Color embedColor;
 
@@ -151,14 +174,16 @@ public class BatchMessageHandler {
             this.timestamp = timestamp;
             this.playerName = playerName;
             this.icon = icon;
+            iconOverflowOnly = true;
             this.messageContent = messageContent;
             this.embedColor = embedColor;
         }
 
-        public String getFormattedMessage(boolean includeIcon) {
+        public String getFormattedMessage(boolean isOverflow) {
             String discordTimestamp = "<t:" + timestamp.getEpochSecond() + ":t>";
             StringBuilder sb = new StringBuilder();
-            if (includeIcon) {
+            boolean hideIcon = iconOverflowOnly && !isOverflow;
+            if (!hideIcon) {
                 sb.append(icon).append(" ");
             }
             sb.append(discordTimestamp).append(" ");

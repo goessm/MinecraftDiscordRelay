@@ -15,6 +15,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerKickEvent;
@@ -36,8 +37,9 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static DiscordRelay plugin;
     private static final Map<String, Instant> lastEventCall = new HashMap<>();
 
-    private static boolean announceServerStatus = true;
+    private static boolean announceServerStatus = false;
     private static boolean permaShush = false;
+    private static boolean relayAdvancements = false;
     private static boolean easterEggDiamondHoe = false;
     private static boolean easterEggDragonKill = false;
     private static boolean easterEggCreeperPowered = false;
@@ -60,11 +62,12 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
         saveDefaultConfig();
 
+        announceServerStatus = getConfig().getBoolean("announceServerStatus");
+        permaShush = getConfig().getBoolean("permaShush");
+        relayAdvancements = getConfig().getBoolean("relayAdvancements");
         easterEggDiamondHoe = getConfig().getBoolean("easterEggDiamondHoe");
         easterEggDragonKill = getConfig().getBoolean("easterEggDragonKill");
         easterEggCreeperPowered = getConfig().getBoolean("easterEggCreeperPowered");
-        announceServerStatus = getConfig().getBoolean("announceServerStatus");
-        permaShush = getConfig().getBoolean("permaShush");
         ignoredPlayers = getConfig().getStringList("ignoredPlayers");
 
         BatchMessageHandler.DiscordBatchMessage.expirationTimeSeconds = getConfig().getInt("batchWindowSeconds");
@@ -129,6 +132,19 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         }
         // Relay leave message
         BatchMessageHandler.playerLeft(e);
+    }
+
+    @EventHandler
+    public void onPlayerAdvancementDoneEvent(PlayerAdvancementDoneEvent e) {
+        if (!relayAdvancements) {
+            return; // Advancements disabled
+        }
+
+        if (isShushed(e.getPlayer())) {
+            return; // Do not relay if player is shushed
+        }
+
+        BatchMessageHandler.playerAdvancement(e);
     }
 
     @EventHandler
