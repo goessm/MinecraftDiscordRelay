@@ -27,12 +27,8 @@ public class ShushCommand implements CommandExecutor {
         }
 
         data.set(shushKey, PersistentDataType.STRING, "shushed");
-        removeLastJoinMessage(p);
+        DiscordRelay.getPlugin().removeLastJoinMessage(p);
         p.sendMessage("Sneaky mode enabled");
         return true;
-    }
-
-    private void removeLastJoinMessage(Player player) {
-        BatchMessageHandler.hideLastPlayerJoin(player.getName());
     }
 }

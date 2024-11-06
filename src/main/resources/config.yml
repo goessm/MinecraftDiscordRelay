@@ -1,5 +1,7 @@
 # Replace with own URL
-webhookURL: "https://discord.com/api/webhooks/XXXXXX"
+webhookURLs:
+  - "https://discord.com/api/webhooks/XXXXXX"
+relayChatOnlyToFirstWebhook: true
 announceServerStatus: true
 batchWindowSeconds: 28800
 permaShush: false

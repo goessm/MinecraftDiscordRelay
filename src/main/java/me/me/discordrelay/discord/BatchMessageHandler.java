@@ -18,10 +18,37 @@ import java.util.*;
 
 public class BatchMessageHandler {
 
-    private static DiscordBatchMessage lastBatchMessage;
-    private static final HashMap<String, BatchMessageEntry> lastJoinMessages = new HashMap<>();
+    public String webhookUrl;
+    private DiscordBatchMessage lastBatchMessage;
+    // Map Key: PlayerName
+    private final HashMap<String, BatchMessageEntry> lastJoinMessages = new HashMap<>();
 
-    public static void playerJoined(PlayerJoinEvent e) {
+    public BatchMessageHandler(String url) {
+        webhookUrl = url;
+    }
+
+    /**
+     * Send a discord embed message
+     *
+     * @param color Embed color
+     * @param text  Embed text
+     * @return The message id of the webhook message, or null on error
+     */
+    public String sendDiscordEmbed(Color color, String text) {
+        DiscordMessage message = new DiscordMessage();
+        message.addEmbed(new DiscordMessage.EmbedObject()
+                .setColor(color)
+                .setDescription(text)
+        );
+        try {
+            WebhookHandler.sendDiscordMessage(message, webhookUrl);
+        } catch (java.io.IOException event) {
+            DiscordRelay.getPlugin().getLogger().severe(event.toString());
+        }
+        return message.getMessageId();
+    }
+
+    public void playerJoined(PlayerJoinEvent e) {
         String playerName = e.getPlayer().getName();
         String joinMessage = e.getJoinMessage();
         joinMessage = joinMessage == null ? "" : joinMessage;
@@ -31,7 +58,7 @@ public class BatchMessageHandler {
         addBatchMessageEntry(joinMsg);
     }
 
-    public static void playerLeft(PlayerQuitEvent e) {
+    public void playerLeft(PlayerQuitEvent e) {
         String playerName = e.getPlayer().getName();
         String quitMessage = e.getQuitMessage();
         quitMessage = quitMessage == null ? "" : quitMessage;
@@ -40,13 +67,13 @@ public class BatchMessageHandler {
         addBatchMessageEntry(leaveMsg);
     }
 
-    public static void playerDied(PlayerDeathEvent e) {
+    public void playerDied(PlayerDeathEvent e) {
         String deathMessage = e.getDeathMessage();
         BatchMessageEntry deathMsg = new BatchMessageEntry(Instant.now(), e.getEntity().getName(), ":skull_crossbones:", deathMessage, Color.yellow);
         addBatchMessageEntry(deathMsg);
     }
 
-    public static void playerAdvancement(PlayerAdvancementDoneEvent e) {
+    public void playerAdvancement(PlayerAdvancementDoneEvent e) {
         String playerName = e.getPlayer().getName();
         Advancement advancement = e.getAdvancement();
         if (advancement == null) {
@@ -64,7 +91,7 @@ public class BatchMessageHandler {
         addBatchMessageEntry(msg);
     }
 
-    public static void hideLastPlayerJoin(String playerName) {
+    public void hideLastPlayerJoin(String playerName) {
         if (lastBatchMessage == null) {
             return;
         }
@@ -77,12 +104,12 @@ public class BatchMessageHandler {
         if (lastBatchMessage.batchMessageEntries.size() > 0) {
             patchBatchMessage();
         } else {
-            WebhookHandler.deleteDiscordMessage(lastBatchMessage.discordMessage);
+            WebhookHandler.deleteDiscordMessage(lastBatchMessage.discordMessage, webhookUrl);
             lastBatchMessage = null;
         }
     }
 
-    public static void addBatchMessageEntry(BatchMessageEntry entry) {
+    public void addBatchMessageEntry(BatchMessageEntry entry) {
         if (lastBatchMessage == null || lastBatchMessage.isOld()) {
             DiscordBatchMessage discordBatchMessage = new DiscordBatchMessage(entry);
             sendBatchMessage(discordBatchMessage);
@@ -93,10 +120,10 @@ public class BatchMessageHandler {
     }
 
 
-    public static void sendBatchMessage(DiscordBatchMessage discordBatchMessage) {
+    public void sendBatchMessage(DiscordBatchMessage discordBatchMessage) {
         discordBatchMessage.buildMessageContent();
         try {
-            WebhookHandler.sendDiscordMessage(discordBatchMessage.discordMessage);
+            WebhookHandler.sendDiscordMessage(discordBatchMessage.discordMessage, webhookUrl);
         } catch (IOException e) {
             DiscordRelay.getPlugin().getLogger().severe(e.getMessage());
         }
@@ -104,9 +131,9 @@ public class BatchMessageHandler {
 
     }
 
-    public static void patchBatchMessage() {
+    public void patchBatchMessage() {
         lastBatchMessage.buildMessageContent();
-        WebhookHandler.patchDiscordMessage(lastBatchMessage.discordMessage);
+        WebhookHandler.patchDiscordMessage(lastBatchMessage.discordMessage, webhookUrl);
     }
 
     public static class DiscordBatchMessage {

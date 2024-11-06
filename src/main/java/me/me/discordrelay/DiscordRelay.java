@@ -28,6 +28,7 @@ import java.awt.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.List;
 
@@ -37,9 +38,12 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static DiscordRelay plugin;
     private static final Map<String, Instant> lastEventCall = new HashMap<>();
 
+    private static List<String> webhookUrls;
+    private static final List<BatchMessageHandler> batchMessageHandlers = new LinkedList<BatchMessageHandler>();
+    private static boolean relayChatOnlyToFirstWebhook = true;
     private static boolean announceServerStatus = false;
     private static boolean permaShush = false;
-    private static boolean relayAdvancements = false;
+    private static boolean relayAdvancements = true;
     private static boolean easterEggDiamondHoe = false;
     private static boolean easterEggDragonKill = false;
     private static boolean easterEggCreeperPowered = false;
@@ -51,6 +55,16 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        webhookUrls = getConfig().getStringList("webhookURLs");
+        if (webhookUrls == null || webhookUrls.isEmpty()) {
+            getLogger().severe("No webhook URL given! Cannot start Discord Relay");
+            return;
+        }
+
+        for (String webhookUrl : webhookUrls) {
+            BatchMessageHandler handler = new BatchMessageHandler(webhookUrl);
+            batchMessageHandlers.add(handler);
+        }
 
         plugin = this;
 
@@ -62,12 +76,13 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
         saveDefaultConfig();
 
-        announceServerStatus = getConfig().getBoolean("announceServerStatus");
-        permaShush = getConfig().getBoolean("permaShush");
-        relayAdvancements = getConfig().getBoolean("relayAdvancements");
-        easterEggDiamondHoe = getConfig().getBoolean("easterEggDiamondHoe");
-        easterEggDragonKill = getConfig().getBoolean("easterEggDragonKill");
-        easterEggCreeperPowered = getConfig().getBoolean("easterEggCreeperPowered");
+        relayChatOnlyToFirstWebhook = getConfig().getBoolean("relayChatOnlyToFirstWebhook", relayChatOnlyToFirstWebhook);
+        announceServerStatus = getConfig().getBoolean("announceServerStatus", announceServerStatus);
+        permaShush = getConfig().getBoolean("permaShush", permaShush);
+        relayAdvancements = getConfig().getBoolean("relayAdvancements", relayAdvancements);
+        easterEggDiamondHoe = getConfig().getBoolean("easterEggDiamondHoe", easterEggDiamondHoe);
+        easterEggDragonKill = getConfig().getBoolean("easterEggDragonKill", easterEggDragonKill);
+        easterEggCreeperPowered = getConfig().getBoolean("easterEggCreeperPowered", easterEggCreeperPowered);
         ignoredPlayers = getConfig().getStringList("ignoredPlayers");
 
         BatchMessageHandler.DiscordBatchMessage.expirationTimeSeconds = getConfig().getInt("batchWindowSeconds");
@@ -75,7 +90,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         startTasks();
 
         if (announceServerStatus) {
-            sendDiscordEmbed(Color.GREEN, "Server started");
+            sendEmbedAllWebhooks(Color.GREEN, "Server started");
         }
     }
 
@@ -87,7 +102,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         getLogger().info("DiscordRelay disabled!");
 
         if (announceServerStatus) {
-            sendDiscordEmbed(Color.RED, "Server shut down");
+            sendEmbedAllWebhooks(Color.RED, "Server shut down");
         }
     }
 
@@ -104,7 +119,13 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         sb.deleteCharAt(0);
         message = sb.toString();
 
-        sendDiscordEmbed(Color.BLUE, ":speech_balloon: %s : %s".formatted(e.getPlayer().getName(), message));
+        Color color = Color.BLUE;
+        String text = ":speech_balloon: %s : %s".formatted(e.getPlayer().getName(), message);
+        if (relayChatOnlyToFirstWebhook) {
+            batchMessageHandlers.get(0).sendDiscordEmbed(color, text);
+        } else {
+            sendEmbedAllWebhooks(color, text);
+        }
     }
 
     @EventHandler
@@ -112,7 +133,8 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         if (isShushed(e.getEntity())) {
             return; // Do not relay if player is shushed
         }
-        BatchMessageHandler.playerDied(e);
+
+        batchMessageHandlers.forEach(handler -> handler.playerDied(e));
     }
 
     @EventHandler
@@ -121,7 +143,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             return; // Do not relay if player is shushed
         }
 
-        BatchMessageHandler.playerJoined(e);
+        batchMessageHandlers.forEach(handler -> handler.playerJoined(e));
     }
 
     @EventHandler
@@ -131,7 +153,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             return; // Do not relay if player is shushed
         }
         // Relay leave message
-        BatchMessageHandler.playerLeft(e);
+        batchMessageHandlers.forEach(handler -> handler.playerLeft(e));
     }
 
     @EventHandler
@@ -144,7 +166,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             return; // Do not relay if player is shushed
         }
 
-        BatchMessageHandler.playerAdvancement(e);
+        batchMessageHandlers.forEach(handler -> handler.playerAdvancement(e));
     }
 
     @EventHandler
@@ -165,15 +187,15 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             }
         }
         lastEventCall.put("creeper struck by lightning", Instant.now());
-        sendDiscordEmbed(Color.YELLOW, "A creeper was struck by lightning :scream: :cloud_lightning: ");
+        sendEmbedAllWebhooks(Color.YELLOW, "A creeper was struck by lightning :scream: :cloud_lightning: ");
     }
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent e) {
         if (easterEggDragonKill && e.getEntityType() == EntityType.ENDER_DRAGON) {
             Player killer = e.getEntity().getKiller();
-            sendDiscordEmbed(Color.CYAN, "%s slayed the ender dragon!"
-                    .formatted(killer != null ? killer.getName() : "Someone"));
+            String text = "%s slayed the ender dragon!".formatted(killer != null ? killer.getName() : "Someone");
+            sendEmbedAllWebhooks(Color.CYAN, text);
         }
     }
 
@@ -186,33 +208,16 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         HumanEntity player = e.getWhoClicked();
 
         if (items.getType() == Material.DIAMOND_HOE) {
-            sendDiscordEmbed(Color.CYAN, player.getName() + " crafted a diamond hoe :gem: Why?");
+            sendEmbedAllWebhooks(Color.CYAN, player.getName() + " crafted a diamond hoe :gem: Why?");
         }
+    }
+
+    public void removeLastJoinMessage(Player player) {
+        batchMessageHandlers.forEach(handler -> handler.hideLastPlayerJoin(player.getName()));
     }
 
     private void startTasks() {
 //        new JoinMessageHandler().startTask();
-    }
-
-    /**
-     * Send a discord embed message
-     *
-     * @param color Embed color
-     * @param text  Embed text
-     * @return The message id of the webhook message, or null on error
-     */
-    public String sendDiscordEmbed(Color color, String text) {
-        DiscordMessage message = new DiscordMessage();
-        message.addEmbed(new DiscordMessage.EmbedObject()
-                .setColor(color)
-                .setDescription(text)
-        );
-        try {
-            WebhookHandler.sendDiscordMessage(message);
-        } catch (java.io.IOException event) {
-            getLogger().severe(event.toString());
-        }
-        return message.getMessageId();
     }
 
     private boolean isShushed(Player player) {
@@ -233,5 +238,9 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         NamespacedKey shushKey = new NamespacedKey(getPlugin(), "shhhhh");
         PersistentDataContainer playerData = player.getPersistentDataContainer();
         playerData.remove(shushKey);
+    }
+
+    private void sendEmbedAllWebhooks(Color color, String text) {
+        batchMessageHandlers.forEach(handler -> handler.sendDiscordEmbed(color, text));
     }
 }

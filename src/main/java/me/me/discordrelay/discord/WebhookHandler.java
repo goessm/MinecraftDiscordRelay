@@ -20,12 +20,10 @@ import java.util.List;
 import java.util.Map;
 
 public class WebhookHandler {
-
-    private static String webhookUrl = DiscordRelay.getPlugin().getConfig().getString("webhookURL");
     private static int rateLimitRemaining = 0;
     private static Instant rateLimitReset = Instant.now();
 
-    public static void sendDiscordMessage(DiscordMessage msg) throws IOException {
+    public static void sendDiscordMessage(DiscordMessage msg, String webhookUrl) throws IOException {
         if (msg.content == null && msg.embeds.isEmpty()) {
             throw new IllegalArgumentException("Set content or add at least one EmbedObject");
         }
@@ -79,7 +77,7 @@ public class WebhookHandler {
         }
     }
 
-    public static void patchDiscordMessage(DiscordMessage msg) {
+    public static void patchDiscordMessage(DiscordMessage msg, String webhookUrl) {
         if (msg.content == null && msg.embeds.isEmpty()) {
             throw new IllegalArgumentException("Set content or add at least one EmbedObject");
         }
@@ -117,12 +115,11 @@ public class WebhookHandler {
 
     }
 
-
-    public static boolean deleteDiscordMessage(DiscordMessage msg) {
-        return deleteDiscordMessageById(msg.getMessageId());
+    public static boolean deleteDiscordMessage(DiscordMessage msg, String webhookUrl) {
+        return deleteDiscordMessageById(msg.getMessageId(), webhookUrl);
     }
 
-    public static boolean deleteDiscordMessageById(String messageId) {
+    public static boolean deleteDiscordMessageById(String messageId, String webhookUrl) {
         try {
             URL url = new URL(webhookUrl + "/messages/" + messageId);
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
