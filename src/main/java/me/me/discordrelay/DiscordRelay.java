@@ -162,6 +162,10 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
             return; // Advancements disabled
         }
 
+        if (e.getAdvancement().getDisplay() == null || !e.getAdvancement().getDisplay().shouldAnnounceChat()) {
+            return;
+        }
+
         if (isShushed(e.getPlayer())) {
             return; // Do not relay if player is shushed
         }
