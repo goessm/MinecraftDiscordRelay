@@ -46,7 +46,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
     private static boolean relayAdvancements = true;
     private static boolean easterEggDiamondHoe = false;
     private static boolean easterEggDragonKill = false;
-    private static boolean easterEggCreeperPowered = false;
+    private static long easterEggCreeperPowered = 600L;
     private static List<String> ignoredPlayers;
 
     public static DiscordRelay getPlugin() {
@@ -82,7 +82,7 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
         relayAdvancements = getConfig().getBoolean("relayAdvancements", relayAdvancements);
         easterEggDiamondHoe = getConfig().getBoolean("easterEggDiamondHoe", easterEggDiamondHoe);
         easterEggDragonKill = getConfig().getBoolean("easterEggDragonKill", easterEggDragonKill);
-        easterEggCreeperPowered = getConfig().getBoolean("easterEggCreeperPowered", easterEggCreeperPowered);
+        easterEggCreeperPowered = getConfig().getLong("easterEggCreeperPowered", easterEggCreeperPowered);
         ignoredPlayers = getConfig().getStringList("ignoredPlayers");
 
         BatchMessageHandler.DiscordBatchMessage.expirationTimeSeconds = getConfig().getInt("batchWindowSeconds");
@@ -175,10 +175,10 @@ public final class DiscordRelay extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onCreeperPowered(CreeperPowerEvent e) {
-        if (!easterEggCreeperPowered) {
+        if (easterEggCreeperPowered < 0) {
             return;
         }
-        long cooldownSecs = 10;
+        long cooldownSecs = easterEggCreeperPowered;
         if (e.getCause() != CreeperPowerEvent.PowerCause.LIGHTNING) {
             return;
         }
