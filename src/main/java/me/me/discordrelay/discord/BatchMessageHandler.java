@@ -18,6 +18,10 @@ import java.util.*;
 
 public class BatchMessageHandler {
 
+    // Constants defined by discord limits
+    private static final int MAX_MSG_EMBEDS = 10;
+    private static final int MAX_MSG_LENGTH = 4096;
+
     public String webhookUrl;
     private DiscordBatchMessage lastBatchMessage;
     // Map Key: PlayerName
@@ -111,12 +115,20 @@ public class BatchMessageHandler {
 
     public void addBatchMessageEntry(BatchMessageEntry entry) {
         if (lastBatchMessage == null || lastBatchMessage.isOld()) {
-            DiscordBatchMessage discordBatchMessage = new DiscordBatchMessage(entry);
-            sendBatchMessage(discordBatchMessage);
-        } else {
-            lastBatchMessage.batchMessageEntries.add(entry);
-            patchBatchMessage();
+            // No old message, or message too old
+            sendBatchMessage(new DiscordBatchMessage(entry));
+            return;
         }
+
+        lastBatchMessage.batchMessageEntries.add(entry);
+
+        if (lastBatchMessage.getEstimatedLength() >= MAX_MSG_LENGTH) {
+            // Old message too long, need new one
+            sendBatchMessage(new DiscordBatchMessage(entry));
+            return;
+        }
+
+        patchBatchMessage();
     }
 
 
@@ -157,7 +169,7 @@ public class BatchMessageHandler {
         }
 
         public void buildMessageContent() {
-            int embedsLeft = 10;
+            int embedsLeft = MAX_MSG_EMBEDS;
             discordMessage.clearEmbeds();
 
             StringBuilder lastEmbedText = new StringBuilder();
@@ -185,6 +197,19 @@ public class BatchMessageHandler {
             Instant now = Instant.now();
             Duration duration = Duration.between(createdTimestamp, now);
             return (Math.abs(duration.toSeconds()) >= expirationTimeSeconds);
+        }
+
+        // Returns generous (>=) estimate of the character count of the message
+        // Used to avoid discords message size limit
+        // Is not exact because it does not account for emojis being shown/hidden
+        public int getEstimatedLength() {
+            int estimate = 0;
+
+            for (BatchMessageEntry batchMessageEntry : batchMessageEntries) {
+                estimate += batchMessageEntry.getEstimatedLength();
+            }
+
+            return estimate;
         }
     }
 
@@ -216,6 +241,12 @@ public class BatchMessageHandler {
             sb.append(discordTimestamp).append(" ");
             sb.append(messageContent);
             return sb.toString();
+        }
+
+        // Estimate of how long the message will be
+        // Assumes emoji is included
+        public int getEstimatedLength() {
+            return getFormattedMessage(true).length();
         }
     }
 }
